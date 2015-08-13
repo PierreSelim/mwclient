@@ -19,6 +19,7 @@ from requests.auth import HTTPBasicAuth, AuthBase
 
 import mwclient.errors as errors
 import mwclient.listing as listing
+import mwclient.page as page
 from mwclient.sleep import Sleepers
 
 try:
@@ -740,3 +741,24 @@ class Site(object):
             kwargs['title'] = title
         result = self.raw_api('ask', query=query, **kwargs)
         return result['query']['results']
+
+    def embeddedin(self, title, prop='title', namespace=None,
+                   limit=None):
+        """Yield pages which includes that transclude a given page.
+
+        API doc: https://www.mediawiki.org/wiki/API:Embeddedin
+
+        Args:
+            title (str): list pages that includes this title.
+            namespace (int): restricts search to a given namespace
+            prop (str): prop list (seperated by "|")
+            limit (int): default amount of page to return for each
+                query
+        """
+        kwargs = dict(listing.List.generate_kwargs('ei',
+                                                   prop=prop,
+                                                   title=title,
+                                                   namespace=namespace,
+                                                   limit=limit))
+        for info in listing.List(self, 'embeddedin', 'ei', **kwargs):
+            yield page.Page(self, info['title'])
