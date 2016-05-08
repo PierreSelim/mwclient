@@ -260,6 +260,14 @@ class TestClient(TestCase):
             self.assertEqual(exception.response_text, "An invalid response")
 
 
+    def test_login_error(self):
+        site = self.stdSetup()
+        with mock.patch('mwclient.client.Site.api') as api_mock:
+            api_mock.return_value = {'login': {'result': 'Not work'}}
+            with self.assertRaises(mwclient.errors.LoginError):
+                site.login(username='foo', password='bar')
+
+
 class TestClientApiMethods(TestCase):
 
     def setUp(self):
