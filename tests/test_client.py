@@ -234,6 +234,17 @@ class TestClient(TestCase):
 
         assert len(responses.calls) == 1
 
+    def test_api_handle_error(self):
+        site = self.stdSetup()
+        with mock.patch('mwclient.client.Site.raw_api') as raw_api_mock:
+            raw_api_mock.return_value = {'error': {'code': 'foo',
+                                                   'info': 'bar'}}
+            with self.assertRaises(mwclient.errors.APIError) as ctx:
+                site.api('whatever')
+            api_error = ctx.exception
+            self.assertEqual(api_error.info, 'bar')
+            self.assertEqual(api_error.code, 'foo')
+
 
 class TestClientApiMethods(TestCase):
 
