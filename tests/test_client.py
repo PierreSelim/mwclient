@@ -234,6 +234,11 @@ class TestClient(TestCase):
 
         assert len(responses.calls) == 1
 
+    def test_site_repr(self):
+        site = self.stdSetup()
+        self.assertEqual(repr(site),
+                         "<Site object 'test.wikipedia.org/w/'>")
+
     def test_api_handle_error(self):
         site = self.stdSetup()
         with mock.patch('mwclient.client.Site.raw_api') as raw_api_mock:
