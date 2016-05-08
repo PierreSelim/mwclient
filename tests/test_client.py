@@ -250,6 +250,15 @@ class TestClient(TestCase):
             self.assertEqual(api_error.info, 'bar')
             self.assertEqual(api_error.code, 'foo')
 
+    def test_raw_api_invalid_responses(self):
+        site = self.stdSetup()
+        with mock.patch('mwclient.client.Site.raw_call') as raw_call_mock:
+            raw_call_mock.return_value = "An invalid response"
+            with self.assertRaises(mwclient.errors.InvalidResponse) as ctx:
+                site.raw_api('foo')
+            exception = ctx.exception
+            self.assertEqual(exception.response_text, "An invalid response")
+
 
 class TestClientApiMethods(TestCase):
 
