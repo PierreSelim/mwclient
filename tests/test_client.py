@@ -287,6 +287,12 @@ class TestClient(TestCase):
             self.assertTrue(result['redirects'])
             self.assertTrue(result['mobileformat'])
 
+    @responses.activate
+    def test_ask(self):
+        site = self.stdSetup()
+        self.httpShouldReturn('{"query": {"results": "42"}}')
+        assert site.ask('question', title='Life') == "42"
+
 
 class TestClientApiMethods(TestCase):
 
