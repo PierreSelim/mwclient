@@ -259,13 +259,33 @@ class TestClient(TestCase):
             exception = ctx.exception
             self.assertEqual(exception.response_text, "An invalid response")
 
-
     def test_login_error(self):
         site = self.stdSetup()
         with mock.patch('mwclient.client.Site.api') as api_mock:
             api_mock.return_value = {'login': {'result': 'Not work'}}
             with self.assertRaises(mwclient.errors.LoginError):
                 site.login(username='foo', password='bar')
+
+    def test_parse_generated_kwargs(self):
+        site = self.stdSetup()
+
+        def return_api_parse(parse, **kwargs):
+            """kwargs in key 'parse' so we can test the generated kwargs"""
+            return {parse: kwargs}
+        with mock.patch('mwclient.client.Site.api') as api_mock:
+            api_mock.side_effect = return_api_parse
+            result = site.parse(text='text arg',
+                                title='title arg',
+                                page='page arg',
+                                prop='prop arg',
+                                redirects=True,
+                                mobileformat=True)
+            self.assertEqual(result['text'], 'text arg')
+            self.assertEqual(result['title'], 'title arg')
+            self.assertEqual(result['page'], 'page arg')
+            self.assertEqual(result['prop'], 'prop arg')
+            self.assertTrue(result['redirects'])
+            self.assertTrue(result['mobileformat'])
 
 
 class TestClientApiMethods(TestCase):
