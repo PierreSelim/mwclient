@@ -230,6 +230,16 @@ class TestClient(TestCase):
         with pytest.raises(mwclient.errors.MediaWikiVersionError):
             site = mwclient.Site('test.wikipedia.org')
 
+    @responses.activate
+    def test_version_bad_len(self):
+
+        self.httpShouldReturn(self.metaResponseAsJson(version='42'))
+
+        with pytest.raises(mwclient.errors.MediaWikiVersionError) as excinfo:
+            mwclient.Site('test.wikipedia.org')
+
+        assert "Unknown MediaWiki 42" in str(excinfo.value)
+
     # ----- Use standard setup for rest
 
     @responses.activate
