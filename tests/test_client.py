@@ -96,6 +96,15 @@ class TestClient(TestCase):
         assert version == mwclient.__ver__
 
     @responses.activate
+    def test_connection_pool(self):
+        pool = requests.Session()
+        self.httpShouldReturn(self.metaResponseAsJson())
+        site = mwclient.Site('test.wikipedia.org', pool=pool)
+        responses.reset()
+
+        assert site.connection == pool
+
+    @responses.activate
     def test_https_as_default(self):
         # 'https' should be the default scheme
 
