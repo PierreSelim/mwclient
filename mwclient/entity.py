@@ -208,7 +208,6 @@ class Claim(object):
         """Representation."""
         return "<Claim object %s [%s]>" % (self.prop, self.datatype)
 
-
     @property
     def value(self):
         if self.datatype == 'string':

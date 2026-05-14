@@ -10,7 +10,6 @@ from mwclient._types import Namespace
 from mwclient.util import parse_timestamp, handle_limit
 
 
-
 class Page:
     """
     Represents a page on a MediaWiki wiki represented by a
