@@ -94,7 +94,7 @@ class Page:
         self.edit_time = None  # type: Optional[time.struct_time]
 
         # caching wikibase_item
-        self._wikibase_item = None
+        self._wikibase_item: Optional[Item] = None
 
     @property
     def page_title(self) -> str:
@@ -695,7 +695,7 @@ class Page:
                                                  return_values='title', **kwargs)
 
     @property
-    def wikibase_item(self):
+    def wikibase_item(self) -> Optional[Item]:
         """Item linked to a Page.
 
         if a wikibase item is linked to a page it returns this item,

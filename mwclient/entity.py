@@ -1,41 +1,39 @@
 """WikiBase Entities and related objects."""
+from __future__ import annotations
+
+from dataclasses import dataclass
+from typing import Any, Optional
 
 
-class Entity(object):
-
+class Entity:
     """Wikibase Entity, either Item or Property.
 
     This class should not be implemented directly,
     It is meant to be abstract for Item and Property.
 
     Attributes:
-        site (WikiBaseSite): reference to a WikiBaseSite
-        entity (str): Q number of the entity.
-        descriptions (dict): dictionary containing description per language
-        labels (dict): dictionary containing labels per language
+        site: reference to a WikiBaseSite
+        entity: Q/P number of the entity.
+        descriptions: dictionary containing description per language
+        labels: dictionary containing labels per language
     """
 
-    def __init__(self, site, normalized_entity):
+    def __init__(self, site: Any, normalized_entity: str) -> None:
         """Common part of constructor for Item and Property."""
         self.site = site
-
         self.entity = normalized_entity
-        # caching descriptions, labels, sitelinks
-        # self._sitelinks = None
-        self._descriptions = None
-        self._labels = None
+        self._descriptions: Optional[dict[str, str]] = None
+        self._labels: Optional[dict[str, str]] = None
+        self._itemclaims: Optional[list[Claim]] = None
 
-        # caching claims
-        self._itemclaims = None
-
-    def setinfofromwbgetentities(self, result):
+    def setinfofromwbgetentities(self, result: dict[str, Any]) -> None:
         """Set descriptions, labels and claims from wbgetentities result."""
-        self._descriptions = dict()
+        self._descriptions = {}
         for language in result['descriptions']:
             lang = result['descriptions'][language]['language']
             value = result['descriptions'][language]['value']
             self._descriptions[lang] = value
-        self._labels = dict()
+        self._labels = {}
         for language in result['labels']:
             lang = result['labels'][language]['language']
             value = result['labels'][language]['value']
@@ -45,79 +43,73 @@ class Entity(object):
             for prop in result['claims']:
                 for claim in result['claims'][prop]:
                     mainsnak = claim['mainsnak']
-                    self._itemclaims.append(Claim.fromsnak(self.site,
-                                                           mainsnak))
+                    self._itemclaims.append(Claim.fromsnak(self.site, mainsnak))
 
     @property
-    def labels(self):
+    def labels(self) -> dict[str, str]:
         """Labels dictionary per language"""
         if self._labels is None:
             entities = self.site.api('wbgetentities', ids=self.entity)
             result = entities['entities'][self.entity]
             self.setinfofromwbgetentities(result)
+        assert self._labels is not None
         return self._labels
 
     @property
-    def descriptions(self):
+    def descriptions(self) -> dict[str, str]:
         """Descriptions dictionary per language"""
         if self._descriptions is None:
             entities = self.site.api('wbgetentities', ids=self.entity)
             result = entities['entities'][self.entity]
             self.setinfofromwbgetentities(result)
+        assert self._descriptions is not None
         return self._descriptions
 
-    def claims(self, prop=None):
+    def claims(self, prop: Optional[list[str]] = None) -> list[Claim]:
         """Claims about an Entity.
 
         API Doc: https://www.mediawiki.org/wiki/Wikibase/API/en#wbgetclaims
-        We will probably need to implement rank and props later on.
 
         Args:
-            prop (list, optional): list of property e.g. ['P238', 'P239']
+            prop: list of property e.g. ['P238', 'P239']
         """
         if self._itemclaims is None:
             self._itemclaims = []
             info = self.site.api('wbgetclaims', entity=self.entity)['claims']
-
             for propid in info:
                 for claim in info[propid]:
                     mainsnak = claim['mainsnak']
-                    self._itemclaims.append(Claim.fromsnak(self.site,
-                                                           mainsnak))
+                    self._itemclaims.append(Claim.fromsnak(self.site, mainsnak))
         if prop is None:
             return self._itemclaims
-        else:
-            return [claim for claim in self._itemclaims if claim.prop in prop]
+        return [claim for claim in self._itemclaims if claim.prop in prop]
 
 
 class Item(Entity):
-
     """Wikibase Item.
 
     Attributes:
-        site (WikiBaseSite): reference to a WikiBaseSite
-        entity (str): Q number of the entity.
-        sitelinks (dict): dictionary containing sitelinks per wiki
-        descriptions (dict): dictionary containing description per language
-        labels (dict): dictionary containing labels per language
+        site: reference to a WikiBaseSite
+        entity: Q number of the entity.
+        sitelinks: dictionary containing sitelinks per wiki
+        descriptions: dictionary containing description per language
+        labels: dictionary containing labels per language
     """
 
-    def __init__(self, site, entity):
+    def __init__(self, site: Any, entity: str) -> None:
         """Constructor.
 
         Args:
-            site (WikiBaseSite): reference to a WikiBaseSite
-            entity (str): Q number of the entity.
+            site: reference to a WikiBaseSite
+            entity: Q number of the entity.
         """
-        # Normalizing entity name
-        super(Item, self).__init__(site, 'Q' + entity.upper().lstrip('Q'))
+        super().__init__(site, 'Q' + entity.upper().lstrip('Q'))
+        self._sitelinks: Optional[dict[str, dict[str, Any]]] = None
 
-        self._sitelinks = None
-
-    def setinfofromwbgetentities(self, result):
+    def setinfofromwbgetentities(self, result: dict[str, Any]) -> None:
         """Set sitelinks, descriptions, labels, claims from wbgetentities."""
-        super(Item, self).setinfofromwbgetentities(result)
-        self._sitelinks = dict()
+        super().setinfofromwbgetentities(result)
+        self._sitelinks = {}
         for wiki in result['sitelinks']:
             site = result['sitelinks'][wiki]['site']
             title = result['sitelinks'][wiki]['title']
@@ -125,60 +117,59 @@ class Item(Entity):
             self._sitelinks[site] = {'title': title, 'badges': badges}
 
     @property
-    def sitelinks(self):
-        """Sitelinks dictionary with title, and badges per site.
-
-        Example:
-            >>> import mwclient
-            >>> site = mwclient.WikiBaseSite(('https', 'www.wikidata.org'))
-            >>> q = mwclient.entity.Item(site, 'Q3340172')
-            >>> q.sitelinks
-        """
+    def sitelinks(self) -> dict[str, dict[str, Any]]:
+        """Sitelinks dictionary with title, and badges per site."""
         if self._sitelinks is None:
             entities = self.site.api('wbgetentities', ids=self.entity)
             result = entities['entities'][self.entity]
             self.setinfofromwbgetentities(result)
+        assert self._sitelinks is not None
         return self._sitelinks
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         """Item representation."""
         return "<Item object %s (%s)>" % (self.entity, self.site.host)
 
 
 class Property(Entity):
-
     """Wikibase Property."""
 
-    def __init__(self, site, entity):
+    def __init__(self, site: Any, entity: str) -> None:
         """Constructor.
 
         Args:
-            site (WikiBaseSite): reference to a WikiBaseSite
-            entity (str): Q number of the entity.
+            site: reference to a WikiBaseSite
+            entity: P number of the entity.
         """
-        # Normalizing entity name
-        super(Property, self).__init__(site, 'P' + entity.upper().lstrip('P'))
+        super().__init__(site, 'P' + entity.upper().lstrip('P'))
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         """Property representation."""
         return "<Property object %s (%s)>" % (self.entity, self.site.host)
 
 
-class Claim(object):
-
+class Claim:
     """Claim
 
     Attributes:
-        prop (str): property id.
-        snak (dict): snak with all values return in mainsnak from API call.
-        snaktype (str): 'value', 'somevalue' or 'novalue'
-        datatype (str): datatype ('wikibase-item', 'string', etc.)
-        raw_value (dict): content of snak['datavalue']['value'] if snaktype is
-            'value', None othewise.
-        value (object): typed content of snak['datavalue']['value']
+        prop: property id.
+        snak: snak with all values return in mainsnak from API call.
+        snaktype: 'value', 'somevalue' or 'novalue'
+        datatype: datatype ('wikibase-item', 'string', etc.)
+        raw_value: content of snak['datavalue']['value'] if snaktype is
+            'value', None otherwise.
+        value: typed content of snak['datavalue']['value']
     """
 
-    def __init__(self, site, prop, datatype, snaktype, raw_value=None, snak=None):
+    def __init__(
+        self,
+        site: Any,
+        prop: str,
+        datatype: str,
+        snaktype: str,
+        raw_value: Any = None,
+        snak: Optional[dict[str, Any]] = None,
+    ) -> None:
         """Constructor"""
         self.site = site
         self.prop = prop
@@ -188,28 +179,31 @@ class Claim(object):
         self.snak = snak
 
     @classmethod
-    def fromsnak(cls, site, snak):
+    def fromsnak(cls, site: Any, snak: dict[str, Any]) -> Claim:
         """Claim from snak dictionary.
 
         Args:
-            site (mwclient.WikiBaseSite): site
-            snak (dict): snak dictionary
+            site: site
+            snak: snak dictionary
         """
         snakvalue = None
         if snak['snaktype'] == 'value':
             snakvalue = snak['datavalue']['value']
-        return cls(site, snak['property'],
-                   snak['datatype'],
-                   snak['snaktype'],
-                   raw_value=snakvalue,
-                   snak=snak)
+        return cls(
+            site,
+            snak['property'],
+            snak['datatype'],
+            snak['snaktype'],
+            raw_value=snakvalue,
+            snak=snak,
+        )
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         """Representation."""
         return "<Claim object %s [%s]>" % (self.prop, self.datatype)
 
     @property
-    def value(self):
+    def value(self) -> Any:
         if self.datatype == 'string':
             return self.raw_value
         elif self.datatype == 'monolingualtext':
@@ -232,45 +226,34 @@ class Claim(object):
             return self.raw_value
 
 
-class GlobeCoordinate(object):
-    def __init__(self, latitude=None, longitude=None, altitude=None, precision=None,
-                 globe=None):
-        self.latitude = latitude
-        self.longitude = longitude
-        self.altitude = altitude
-        self.precision = precision
-        self.globe = globe
-
-    def __repr__(self):
-        return "<GlobeCoordinate {}... {}... {}... ...>".format(
-            self.latitude,
-            self.longitude,
-            self.altitude)
+@dataclass
+class GlobeCoordinate:
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    altitude: Optional[float] = None
+    precision: Optional[float] = None
+    globe: Optional[str] = None
 
 
-class TimeData(object):
-    def __init__(self, time=None, timezone=None, before=None, after=None, precision=None,
-                 calendarmodel=None):
-        self.time = time
-        self.timezone = timezone
-        self.before = before
-        self.after = after
-        self.precision = precision
-        self.calendarmodel = calendarmodel
+@dataclass
+class TimeData:
+    time: Optional[str] = None
+    timezone: Optional[int] = None
+    before: Optional[int] = None
+    after: Optional[int] = None
+    precision: Optional[int] = None
+    calendarmodel: Optional[str] = None
 
 
-class Quantity(object):
-    def __init__(self, amount=None, unit=None, upperBound=None, lowerBound=None):
-        self.amount = amount
-        self.unit = unit
-        self.upperBound = upperBound
-        self.lowerBound = lowerBound
+@dataclass
+class Quantity:
+    amount: Optional[str] = None
+    unit: Optional[str] = None
+    upperBound: Optional[str] = None
+    lowerBound: Optional[str] = None
 
 
-class MonolingualText(object):
-    def __init__(self, text=None, language=None):
-        self.text = text
-        self.language = language
-
-    def __repr__(self):
-        return "<MonolingualText [%s] '%s'>" % (self.language, self.text)
+@dataclass
+class MonolingualText:
+    text: Optional[str] = None
+    language: Optional[str] = None
