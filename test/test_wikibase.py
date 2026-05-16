@@ -177,10 +177,7 @@ class TestWikiBaseSiteEntities(unittest.TestCase):
 class TestSiteWikibaseRepository(unittest.TestCase):
 
     def setUp(self):
-        with mock.patch.object(Site, '__init__', lambda self, *a, **kw: None):
-            self.site = Site.__new__(Site)
-            self.site._wikibase_repository = None
-            self.site.connection = mock.MagicMock()
+        self.site = Site('www.wikipedia.org', do_init=False, pool=mock.MagicMock())
         self.mock_api = mock.MagicMock(return_value={
             "query": {"wikibase": {"repo": {"url": {
                 "base": "https://www.wikidata.org",

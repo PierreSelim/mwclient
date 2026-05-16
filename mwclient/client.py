@@ -1968,16 +1968,22 @@ class Site:
         """Wiki base repository."""
         if self._wikibase_repository is None:
             result = self.api('query', meta='wikibase')
+            if 'query' not in result:
+                # we could look for warning but either the query works or not
+                raise errors.WikiBaseNotFound()
             url = result['query']['wikibase']['repo']['url']
-            method = 'https'
+            # default init
+            method = self.scheme
             host = url['base'].replace('//', '')
+            # parsing from the query response
             if '://' in url['base']:
                 method, host = url['base'].split('://')
             path = url['scriptpath'] + "/"
-            self._wikibase_repository = WikiBaseSite(host, path=path, scheme=method,
-                                                     pool=self.connection)
-        # forcing mypy typing
-        assert self._wikibase_repository is not None
+            self._wikibase_repository = WikiBaseSite(
+                host,
+                path=path,
+                scheme=method,
+                pool=self.connection)
         return self._wikibase_repository
 
 
